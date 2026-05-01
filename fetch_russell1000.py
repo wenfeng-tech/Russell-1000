@@ -43,7 +43,10 @@ def fetch_and_upload():
                 ["date", "ticker", "open", "high", "low", "close", "volume"]
             ]
             df = df.dropna(subset=["close"])
-            df["date"] = pd.to_datetime(df["date"]).dt.strftime('%Y-%m-%d')   # ← 关键修复：转为字符串
+            
+            # 关键修复：日期转为字符串 + volume 转为整数
+            df["date"] = pd.to_datetime(df["date"]).dt.strftime('%Y-%m-%d')
+            df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0).astype("Int64")
             
             all_data.append(df)
             print(f"✅ 第 {i//BATCH_SIZE + 1} 批次下载完成")
