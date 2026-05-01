@@ -2,13 +2,11 @@ import os
 import pandas as pd
 import yfinance as yf
 from supabase import create_client, Client
-from datetime import datetime, timedelta
 import time
 
 # ====================== 配置 ======================
 CSV_PATH = "russell1000.csv"
 
-# 从 GitHub Secrets 读取（必须使用环境变量！）
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
@@ -45,7 +43,8 @@ def fetch_and_upload():
                 ["date", "ticker", "open", "high", "low", "close", "volume"]
             ]
             df = df.dropna(subset=["close"])
-            df["date"] = pd.to_datetime(df["date"]).dt.date
+            df["date"] = pd.to_datetime(df["date"]).dt.strftime('%Y-%m-%d')   # ← 关键修复：转为字符串
+            
             all_data.append(df)
             print(f"✅ 第 {i//BATCH_SIZE + 1} 批次下载完成")
         except Exception as e:
@@ -59,7 +58,7 @@ def fetch_and_upload():
     df_final = pd.concat(all_data, ignore_index=True)
     print(f"📦 总计获取 {len(df_final):,} 条记录，开始上传 Supabase...")
 
-    # 分批上传（Supabase 推荐）
+    # 分批上传
     batch_size = 4000
     for i in range(0, len(df_final), batch_size):
         chunk = df_final.iloc[i:i + batch_size]
