@@ -1,0 +1,27 @@
+name: Russell 1000 数据每日同步
+
+on:
+  schedule:
+    - cron: '0 3 * * *'      # 每天北京时间 11:00（UTC 3:00）
+  workflow_dispatch:         # 手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 安装依赖
+        run: |
+          pip install pandas yfinance supabase
+      
+      - name: 运行数据同步
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python fetch_russell1000.py
