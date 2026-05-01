@@ -6,9 +6,11 @@ from datetime import datetime, timedelta
 import time
 
 # ====================== 配置 ======================
-CSV_PATH = "russell1000.csv"          # 你的股票列表文件
-SUPABASE_URL = os.environ["https://xmqosarkjhktzkdobocd.supabase.co"]
-SUPABASE_KEY = os.environ["sb_publishable_KYY2U-LufvbCbJzX6p7krg_9FMKW-VD"]
+CSV_PATH = "russell1000.csv"
+
+# 从 GitHub Secrets 读取（必须使用环境变量！）
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -21,19 +23,21 @@ def load_tickers():
 
 def fetch_and_upload():
     tickers = load_tickers()
-    print(f"开始下载 {len(tickers)} 只股票...")
+    print(f"🚀 开始下载 {len(tickers)} 只 Russell 1000 股票...")
 
     BATCH_SIZE = 60
     all_data = []
 
     for i in range(0, len(tickers), BATCH_SIZE):
-        batch = tickers[i:i+BATCH_SIZE]
+        batch = tickers[i:i + BATCH_SIZE]
         try:
             data = yf.download(batch, period="3mo", threads=True, progress=False)
             if data.empty:
                 continue
+                
             df = data.stack(level=1, future_stack=True).reset_index()
             df.columns = [str(c).lower() for c in df.columns]
+            
             if "adj close" in df.columns:
                 df["close"] = df["adj close"]
             
@@ -43,9 +47,9 @@ def fetch_and_upload():
             df = df.dropna(subset=["close"])
             df["date"] = pd.to_datetime(df["date"]).dt.date
             all_data.append(df)
-            print(f"✅ 批次 {i//BATCH_SIZE + 1} 完成")
+            print(f"✅ 第 {i//BATCH_SIZE + 1} 批次下载完成")
         except Exception as e:
-            print(f"⚠️ 批次失败: {e}")
+            print(f"⚠️ 第 {i//BATCH_SIZE + 1} 批次失败: {e}")
         time.sleep(2)
 
     if not all_data:
@@ -53,17 +57,20 @@ def fetch_and_upload():
         return
 
     df_final = pd.concat(all_data, ignore_index=True)
-    print(f"总计获取 {len(df_final)} 条记录，开始上传 Supabase...")
+    print(f"📦 总计获取 {len(df_final):,} 条记录，开始上传 Supabase...")
 
-    # 分批 upsert（Supabase 推荐单次 < 5000 条）
+    # 分批上传（Supabase 推荐）
     batch_size = 4000
     for i in range(0, len(df_final), batch_size):
-        chunk = df_final.iloc[i:i+batch_size]
+        chunk = df_final.iloc[i:i + batch_size]
         data_dict = chunk.to_dict(orient="records")
-        supabase.table("russell1000_prices").upsert(data_dict, on_conflict="date,ticker").execute()
+        supabase.table("russell1000_prices").upsert(
+            data_dict, 
+            on_conflict="date,ticker"
+        ).execute()
         print(f"✅ 已上传 {i + len(chunk)} / {len(df_final)} 条")
 
-    print("🎉 全部数据已同步到 Supabase！")
+    print("🎉 全部数据已成功同步到 Supabase！")
 
 if __name__ == "__main__":
     fetch_and_upload()
