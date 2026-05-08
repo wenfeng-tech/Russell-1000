@@ -2,7 +2,7 @@ name: Russell 1000 数据每日同步
 
 on:
   schedule:
-    - cron: '0 24 * * *'      # 每天北京时间 8:00
+    - cron: '0 22 * * *'      # 每天北京时间 6:00
   workflow_dispatch:         # 手动触发
 
 jobs:
