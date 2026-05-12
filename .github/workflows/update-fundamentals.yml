@@ -1,1 +1,26 @@
+name: Update Russell 1000 Fundamentals
 
+on:
+  schedule:
+    - cron: '0 3 * * 1'      # 每周一凌晨3点（北京时间）
+  workflow_dispatch:         # 手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas supabase
+        
+      - name: Update Fundamentals
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python fetch_fundamentals.py
